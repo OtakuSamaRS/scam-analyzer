@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: scam-analyzer-api
+    runtime: python
+    pythonVersion: 3.11
+    
+    # Build command
+    buildCommand: pip install -r requirements.txt
+    
+    # Start command
+    startCommand: python scam_analyzer.py 8000
+    
+    # Environment variables
+    envVars:
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_API_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: LLM_MODEL
+        value: llama-3.3-70b-versatile
+    
+    # Auto-deploy on push
+    autoDeploy: true

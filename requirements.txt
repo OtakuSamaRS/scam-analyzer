@@ -1,0 +1,2 @@
+# No external dependencies needed - uses Python stdlib only
+# This file is required by Render for Python deployments
