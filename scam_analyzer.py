@@ -46,6 +46,16 @@ class ScamAnalyzerHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_HEAD(self):
+        if self.path not in ("/", "/index.html"):
+            self.send_error(404, "Not found")
+            return
+        body = WEB_PAGE.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+
     def do_GET(self):
         if self.path not in ("/", "/index.html"):
             self.send_error(404, "Not found")
@@ -284,8 +294,8 @@ def analyze_with_llm(message: str) -> dict:
 
 
 def run_server(port: int = 8000):
-    server = HTTPServer(("127.0.0.1", port), ScamAnalyzerHandler)
-    print(f"Scam Analyzer running at http://127.0.0.1:{port}")
+    server = HTTPServer(("0.0.0.0", port), ScamAnalyzerHandler)
+    print(f"Scam Analyzer running at http://0.0.0.0:{port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -295,7 +305,7 @@ def run_server(port: int = 8000):
 
 
 if __name__ == "__main__":
-    port = 8000
+    port = int(os.environ.get("PORT", 8000))
     if len(sys.argv) > 1:
         try:
             port = int(sys.argv[1])

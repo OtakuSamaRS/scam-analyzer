@@ -7,8 +7,8 @@ services:
     # Build command
     buildCommand: pip install -r requirements.txt
     
-    # Start command
-    startCommand: python scam_analyzer.py 8000
+    # Start command - uses PORT env var set by Render
+    startCommand: python scam_analyzer.py
     
     # Environment variables
     envVars:
