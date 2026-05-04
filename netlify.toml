@@ -1,6 +1,4 @@
 [build]
-  # No build command needed - static site
-  command = ""
   publish = "."
 
 # Environment variables for the API
