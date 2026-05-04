@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scam Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f4f5; --bg2: #e4e4e7;
+      --card: rgba(255,255,255,0.7); --card-solid: #fff;
+      --hover: rgba(255,255,255,0.5); --tag: #e4e4e7;
+      --text: #09090b; --text2: #52525b; --text3: #a1a1aa;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.14);
+      --sh: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --sh-lg: 0 8px 30px rgba(0,0,0,0.08);
+      --r: 12px; --rl: 16px; --rx: 24px;
+      --green: #10b981; --green-bg: rgba(16,185,129,0.12);
+      --yellow: #f59e0b; --yellow-bg: rgba(245,158,11,0.12);
+      --red: #ef4444; --red-bg: rgba(239,68,68,0.12);
+      --accent: #6366f1; --accent2: #8b5cf6;
+      --accent-bg: rgba(99,102,241,0.08);
+      --grad: linear-gradient(135deg, #6366f1, #8b5cf6);
+      --blur: 20px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #09090b; --bg2: #18181b;
+      --card: rgba(24,24,27,0.65); --card-solid: #18181b;
+      --hover: rgba(39,39,42,0.5); --tag: #27272a;
+      --text: #fafafa; --text2: #a1a1aa; --text3: #52525b;
+      --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.1);
+      --sh: 0 1px 3px rgba(0,0,0,0.5); --sh-lg: 0 8px 30px rgba(0,0,0,0.6);
+      --green: #34d399; --green-bg: rgba(52,211,153,0.1);
+      --yellow: #fbbf24; --yellow-bg: rgba(251,191,36,0.1);
+      --red: #f87171; --red-bg: rgba(248,113,113,0.1);
+      --accent: #818cf8; --accent2: #a78bfa;
+      --accent-bg: rgba(129,140,248,0.08);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; overflow-x: hidden; position: relative;
+    }
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18; }
+    [data-theme="dark"] .orb { opacity: 0.12; }
+    .orb-1 { width: 500px; height: 500px; background: #6366f1; top: -120px; left: -100px; animation: float1 20s ease-in-out infinite; }
+    .orb-2 { width: 400px; height: 400px; background: #8b5cf6; bottom: -80px; right: -80px; animation: float2 25s ease-in-out infinite; }
+    .orb-3 { width: 300px; height: 300px; background: #ec4899; top: 40%; left: 50%; animation: float3 18s ease-in-out infinite; }
+    @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(60px,40px)} }
+    @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-50px,-30px)} }
+    @keyframes float3 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,50px)} }
+
+    .container { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem 3rem; position: relative; z-index: 1; }
+
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; }
+    .logo { display: flex; align-items: center; gap: 14px; }
+    .logo-icon {
+      width: 46px; height: 46px; border-radius: var(--r);
+      background: var(--grad); display: flex; align-items: center; justify-content: center;
+      color: #fff; box-shadow: 0 4px 15px rgba(99,102,241,0.35);
+    }
+    .logo h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo p { font-size: 13px; color: var(--text3); margin-top: 1px; font-weight: 400; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .badge {
+      font-size: 12px; color: var(--green); background: var(--green-bg);
+      padding: 5px 14px; border-radius: 20px; font-weight: 500;
+      display: flex; align-items: center; gap: 7px;
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(16,185,129,0.15);
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; display: inline-block; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .theme-toggle {
+      width: 36px; height: 36px; border-radius: var(--r); border: 1px solid var(--border2);
+      background: var(--card); 
+      -webkit-backdrop-filter: blur(var(--blur));
+      backdrop-filter: blur(var(--blur));
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text2); transition: all .2s;
+    }
+    .theme-toggle:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
+    [data-theme="dark"] .icon-sun { display: none; }
+    [data-theme="light"] .icon-moon, :root:not([data-theme]) .icon-moon { display: none; }
+    [data-theme="light"] .icon-sun, :root:not([data-theme]) .icon-sun { display: block; }
+    [data-theme="dark"] .icon-moon { display: block; }
+
+    .input-card {
+      background: var(--card); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+      border: 1px solid var(--border); border-radius: var(--rx);
+      box-shadow: var(--sh-lg); overflow: hidden; margin-bottom: 1rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-card:focus-within { border-color: var(--accent); box-shadow: var(--sh-lg), 0 0 0 3px var(--accent-bg); }
+    .input-body { padding: 1.5rem 1.5rem 0; }
+    .label { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+    textarea {
+      width: 100%; min-height: 110px; resize: vertical; background: transparent;
+      border: none; outline: none;
+      font-family: 'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',monospace;
+      font-size: 13.5px; color: var(--text); line-height: 1.7; padding: 0 0 1rem;
+    }
+    textarea::placeholder { color: var(--text3); }
+    .input-footer {
+      padding: 12px 1.5rem; border-top: 1px solid var(--border);
+      background: var(--hover); display: flex; align-items: center; justify-content: space-between;
+    }
+    .char-count { font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; }
+    .btn-row { display: flex; gap: 8px; }
+    .btn-clear {
+      background: var(--card); color: var(--text2); border: 1px solid var(--border2);
+      padding: 8px 16px; font-size: 13px; font-weight: 500; font-family: inherit;
+      cursor: pointer; border-radius: var(--r); transition: all .15s;
+    }
+    .btn-clear:hover { background: var(--tag); color: var(--text); }
+    .btn-go {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--grad); color: #fff; border: none; border-radius: var(--r);
+      padding: 8px 22px; font-size: 13px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all .2s;
+      box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+    }
+    .btn-go:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
+    .btn-go:active { transform: translateY(0) scale(.98); }
+    .btn-go:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-spinner {
+      display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .samples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2rem; }
+    .chip {
+      font-size: 12px; color: var(--text2); background: var(--card);
+      -webkit-backdrop-filter: blur(var(--blur));
+      backdrop-filter: blur(var(--blur));
+      border: 1px solid var(--border); border-radius: 20px; padding: 6px 16px;
+      cursor: pointer; transition: all .2s; font-family: inherit; font-weight: 500;
+    }
+    .chip:hover { background: var(--hover); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    .chip-safe:hover { border-color: var(--green); color: var(--green); }
+
+    .results { display: none; }
+    .results.show { display: block; animation: fadeUp .4s cubic-bezier(.16,1,.3,1); }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+    .score-row { display: grid; grid-template-columns: auto 1fr 1fr; gap: 14px; align-items: stretch; margin-bottom: 14px; }
+    .gauge { width: 140px; height: 140px; position: relative; }
+    .gauge svg { transform: rotate(-90deg); filter: drop-shadow(0 0 8px var(--gauge-glow, transparent)); }
+    .gauge-track { fill: none; stroke: var(--border); stroke-width: 7; }
+    .gauge-fill { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.4,0,.2,1), stroke .3s; }
+    .gauge-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .gauge-num { font-size: 38px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+    .gauge-sub { font-size: 11px; color: var(--text3); margin-top: 4px; font-weight: 500; }
+
+    .stat {
+      background: var(--card); -webkit-backdrop-filter: blur(var(--blur));
+      backdrop-filter: blur(var(--blur));
+      border: 1px solid var(--border); border-radius: var(--rl);
+      padding: 20px; box-shadow: var(--sh); transition: all .2s;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .stat:hover { box-shadow: var(--sh-lg); transform: translateY(-2px); }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; padding: 5px 16px; border-radius: 20px; }
+    .pill-low { background: var(--green-bg); color: var(--green); }
+    .pill-medium { background: var(--yellow-bg); color: var(--yellow); }
+    .pill-high { background: var(--red-bg); color: var(--red); }
+    .pill-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .pill-dot-low { background: var(--green); }
+    .pill-dot-medium { background: var(--yellow); }
+    .pill-dot-high { background: var(--red); }
+    .conf-num { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+    .conf-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 12px; overflow: hidden; }
+    .conf-fill { height: 100%; border-radius: 3px; background: var(--grad); width: 0%; transition: width .8s cubic-bezier(.4,0,.2,1); }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .detail-card {
+      background: var(--card); -webkit-backdrop-filter: blur(var(--blur));
+      backdrop-filter: blur(var(--blur));
+      border: 1px solid var(--border); border-radius: var(--rl);
+      padding: 22px; box-shadow: var(--sh); transition: all .2s;
+    }
+    .detail-card:hover { box-shadow: var(--sh-lg); transform: translateY(-2px); }
+    .finding {
+      display: flex; align-items: flex-start; gap: 10px; font-size: 13px;
+      color: var(--text2); padding: 12px 14px; background: var(--hover);
+      border-radius: var(--r); line-height: 1.55; margin-bottom: 8px;
+      border: 1px solid var(--border); transition: all .15s;
+    }
+    .finding:last-child { margin-bottom: 0; }
+    .finding:hover { background: var(--tag); }
+    .finding svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+    .sigs { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
+    .sig {
+      text-align: center; padding: 12px 4px; background: var(--hover);
+      border-radius: var(--r); border: 1px solid var(--border); transition: all .2s;
+    }
+    .sig:hover { transform: translateY(-2px); box-shadow: var(--sh); }
+    .sig-name { font-size: 10px; color: var(--text3); margin-bottom: 8px; line-height: 1.3; font-weight: 600; letter-spacing: 0.02em; }
+    .sig-val { font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 10px; display: inline-block; }
+    .sig-on { background: var(--red-bg); color: var(--red); }
+    .sig-off { background: var(--tag); color: var(--text3); }
+    .advice {
+      display: flex; align-items: flex-start; gap: 12px; font-size: 13px;
+      color: var(--text2); line-height: 1.65; padding: 16px;
+      background: var(--accent-bg); border-radius: var(--r);
+      border: 1px solid rgba(99,102,241,0.15);
+    }
+    .advice svg { flex-shrink: 0; color: var(--accent); margin-top: 2px; }
+
+    .hist { margin-top: 2.5rem; display: none; }
+    .hist.show { display: block; animation: fadeUp .4s cubic-bezier(.16,1,.3,1); }
+    .hist-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .hist-list { display: flex; flex-direction: column; gap: 8px; }
+    .hist-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: var(--card); -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+      border: 1px solid var(--border); border-radius: var(--r);
+      cursor: pointer; transition: all .2s; font-size: 13px;
+    }
+    .hist-item:hover { background: var(--hover); transform: translateX(4px); border-color: var(--border2); }
+    .hist-text { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 500px; }
+    .hist-score { font-weight: 700; font-size: 12px; padding: 3px 12px; border-radius: 10px; flex-shrink: 0; }
+    .btn-txt { background: none; border: none; color: var(--text3); font-size: 12px; cursor: pointer; font-family: inherit; padding: 4px 8px; border-radius: var(--r); transition: color .15s; }
+    .btn-txt:hover { color: var(--red); }
+
+    .empty { text-align: center; padding: 4rem 2rem; color: var(--text3); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .loading { display: none; text-align: center; padding: 4rem 2rem; }
+    .loading.show { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .scan-anim { position: relative; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
+    .scan-ring {
+      position: absolute; inset: -4px; border-radius: 50%;
+      border: 2px solid transparent; border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .loading p { font-size: 13px; color: var(--text3); font-weight: 500; }
+
+    footer { text-align: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+    footer span { font-size: 12px; color: var(--text3); font-weight: 500; }
+
+    @media (max-width:640px) {
+      .container { padding: 1.5rem 1rem 2rem; }
+      .score-row { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .sigs { grid-template-columns: repeat(3,1fr); }
+      header { flex-direction: column; gap: 12px; align-items: flex-start; }
+      .header-actions { align-self: flex-end; margin-top: -36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <h1>Scam Analyzer</h1>
+          <p>AI-powered threat intelligence</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="badge"><span class="badge-dot"></span>Online</div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="input-card">
+      <div class="input-body">
+        <div class="label">Analyze message</div>
+        <textarea id="msg" placeholder="Paste a suspicious email, SMS, or message here..." rows="5"></textarea>
+      </div>
+      <div class="input-footer">
+        <span class="char-count" id="charCount">0 chars</span>
+        <div class="btn-row">
+          <button class="btn-clear" id="clearBtn">Clear</button>
+          <button class="btn-go" id="analyzeBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Analyze
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="samples" id="samples">
+      <button class="chip" data-msg="URGENT: Your bank account has been locked! Click here immediately to verify: http://bit.ly/verify-now or face legal action within 24 hours">Bank scam</button>
+      <button class="chip" data-msg="Congratulations! You've won a $1,000 Amazon gift card! Claim your prize now at www.free-prizes.com before it expires!">Prize scam</button>
+      <button class="chip" data-msg="Hi, this is the HR team. Please share your password and bank details for the salary revision process urgently.">HR phishing</button>
+      <button class="chip chip-safe" data-msg="Hey, are we still meeting for coffee tomorrow at 3pm? Let me know if the time works for you.">Safe message</button>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="scan-anim">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div class="scan-ring"></div>
+      </div>
+      <p>Scanning for threats...</p>
+    </div>
+    <div id="empty" class="empty">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Paste a message above or try a sample</span>
+    </div>
+    <div class="results" id="results"></div>
+
+    <div class="hist" id="histSection">
+      <div class="hist-head">
+        <div class="label">Recent analyses</div>
+        <button class="btn-txt" id="clearHist">Clear all</button>
+      </div>
+      <div class="hist-list" id="histList"></div>
+    </div>
+
+    <footer>
+      <span>Powered by Llama 3.3</span>
+    </footer>
+  </div>
+  <script>
+    const PLACEHOLDERS = new Set(["{user_input}","<<user_message>>","<user_message>","{{message_text}}","n/a","na","none","null"]);
+    function isPlaceholder(m) { const c=m.trim(); if(!c) return true; const l=c.toLowerCase(); return PLACEHOLDERS.has(l)||/^[<{].*user.*[>}]$/.test(l); }
+
+    async function analyzeWithApi(message) {
+      const response = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      let payload;
+      try { payload = await response.json(); } catch (_) { throw new Error('Analyzer returned an invalid response.'); }
+      if (!response.ok) throw new Error(payload.error || `Request failed with status ${response.status}`);
+      return payload;
+    }
+
+    const $=id=>document.getElementById(id);
+    const msgEl=$('msg'), charEl=$('charCount'), analyzeBtn=$('analyzeBtn'), clearBtn=$('clearBtn');
+    const output=$('results'), emptyEl=$('empty'), loadingEl=$('loading');
+    const histSection=$('histSection'), histList=$('histList'), clearHistBtn=$('clearHist');
+    const themeToggle=$('themeToggle');
+
+    // Theme
+    const savedTheme = localStorage.getItem('scam_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('scam_theme', next);
+    });
+
+    let history = JSON.parse(localStorage.getItem('scam_history') || '[]');
+
+    msgEl.addEventListener('input', () => {
+      const n = msgEl.value.length;
+      charEl.textContent = n === 1 ? '1 char' : `${n} chars`;
+    });
+    clearBtn.addEventListener('click', () => {
+      msgEl.value = ''; charEl.textContent = '0 chars';
+      output.classList.remove('show'); emptyEl.style.display = '';
+    });
+
+    document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+      msgEl.value = c.dataset.msg;
+      charEl.textContent = `${c.dataset.msg.length} chars`;
+      analyzeBtn.click();
+    }));
+
+    function renderHistory() {
+      if (!history.length) { histSection.classList.remove('show'); return; }
+      histSection.classList.add('show');
+      histList.innerHTML = history.slice(0, 8).map((h, i) => {
+        const cls = h.risk === 'high' ? 'pill-high' : h.risk === 'medium' ? 'pill-medium' : 'pill-low';
+        return `<div class="hist-item" data-i="${i}"><span class="hist-text">${h.text}</span><span class="hist-score ${cls}">${h.score}/100</span></div>`;
+      }).join('');
+      histList.querySelectorAll('.hist-item').forEach(el => el.addEventListener('click', () => {
+        const h = history[+el.dataset.i];
+        msgEl.value = h.text; charEl.textContent = `${h.text.length} chars`;
+        analyzeBtn.click();
+      }));
+    }
+
+    function renderResult(r) {
+      const sigNames = {urgency:'Urgency', threat:'Threat', financial_request:'Financial', link_present:'Susp. Link', impersonation:'Impersonation'};
+      const C = 2 * Math.PI * 54, off = C - (r.score / 100) * C;
+      const col = r.risk === 'high' ? 'var(--red)' : r.risk === 'medium' ? 'var(--yellow)' : 'var(--green)';
+      const glowCol = r.risk === 'high' ? 'var(--red-bg)' : r.risk === 'medium' ? 'var(--yellow-bg)' : 'var(--green-bg)';
+      const chk = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+      const wrn = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+      const bad = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+      const icon = r.risk === 'high' ? bad : r.risk === 'medium' ? wrn : chk;
+      const riskLabel = r.risk[0].toUpperCase() + r.risk.slice(1);
+      const sigHtml = Object.entries(sigNames).map(([k, name]) =>
+        `<div class="sig"><div class="sig-name">${name}</div><div class="sig-val ${r.signals[k] ? 'sig-on' : 'sig-off'}">${r.signals[k] ? 'YES' : 'NO'}</div></div>`
+      ).join('');
+      const findings = r.reasons.map(x => `<div class="finding">${icon}<span>${x}</span></div>`).join('');
+
+      output.innerHTML = `
+        <div class="score-row">
+          <div class="gauge" style="--gauge-glow:${glowCol}">
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <circle class="gauge-track" cx="70" cy="70" r="54"></circle>
+              <circle class="gauge-fill" cx="70" cy="70" r="54" stroke="${col}" stroke-dasharray="${C}" stroke-dashoffset="${off}"></circle>
+            </svg>
+            <div class="gauge-center"><div class="gauge-num" style="color:${col}">${r.score}</div><div class="gauge-sub">Risk Score</div></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Threat Level</div>
+            <div class="pill pill-${r.risk}"><span class="pill-dot pill-dot-${r.risk}"></span>${riskLabel}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Confidence</div>
+            <div class="conf-num">${r.confidence}%</div>
+            <div class="conf-bar"><div class="conf-fill"></div></div>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-card">
+            <div class="stat-label">Key Findings</div>
+            ${findings}
+          </div>
+          <div class="detail-card">
+            <div class="stat-label">Signal Matrix</div>
+            <div class="sigs">${sigHtml}</div>
+          </div>
+        </div>
+        <div class="detail-card">
+          <div class="stat-label">Recommendation</div>
+          <div class="advice">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V16a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1.3A7 7 0 0 0 12 2z"/></svg>
+            <span>${r.advice}</span>
+          </div>
+        </div>
+      `;
+      requestAnimationFrame(() => {
+        const confFill = output.querySelector('.conf-fill');
+        if (confFill) confFill.style.width = `${r.confidence}%`;
+      });
+      output.classList.add('show');
+    }
+
+    function renderError(message) {
+      output.innerHTML = `
+        <div class="detail-card">
+          <div class="stat-label">Analysis Error</div>
+          <div class="advice" style="border-color:rgba(239,68,68,0.2);background:var(--red-bg)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>${message}</span>
+          </div>
+        </div>
+      `;
+      output.classList.add('show');
+    }
+
+    clearHistBtn.addEventListener('click', () => { history = []; localStorage.setItem('scam_history', '[]'); renderHistory(); });
+
+    analyzeBtn.addEventListener('click', async () => {
+      const message = msgEl.value.trim();
+      if (!message) return;
+      if (isPlaceholder(message)) { renderError('Please provide a complete message for analysis.'); return; }
+      analyzeBtn.disabled = true; analyzeBtn.innerHTML = '<span class="btn-spinner"></span>Analyzing...';
+      emptyEl.style.display = 'none'; output.classList.remove('show'); loadingEl.classList.add('show');
+
+      try {
+        const r = await analyzeWithApi(message);
+        loadingEl.classList.remove('show');
+        renderResult(r);
+        history.unshift({ text: message, score: r.score, risk: r.risk, time: Date.now() });
+        history = history.slice(0, 20);
+        localStorage.setItem('scam_history', JSON.stringify(history));
+        renderHistory();
+      } catch (err) {
+        loadingEl.classList.remove('show');
+        renderError(err?.message || 'Unable to analyze message right now.');
+      } finally {
+        loadingEl.classList.remove('show');
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Analyze';
+      }
+    });
+
+    renderHistory();
+  </script>
+</body>
+</html>

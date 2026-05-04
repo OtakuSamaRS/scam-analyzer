@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show *)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import scam_analyzer; print\\('OK - HTML loaded, length:', len\\(scam_analyzer.WEB_PAGE\\)\\)\")",
+      "Bash(python scam_analyzer.py)",
+      "Bash(curl -s http://127.0.0.1:8000)",
+      "Bash(taskkill //F //IM python.exe)"
+    ]
+  }
+}
