@@ -258,6 +258,7 @@ def analyze_with_llm(message: str) -> dict:
         "max_tokens": LLM_MAX_TOKENS,
         "temperature": 0.1,
         "top_p": 0.95,
+        "response_format": {"type": "json_object"},
     }
     if LLM_ENABLE_THINKING:
         payload["chat_template_kwargs"] = {"enable_thinking": True}
@@ -273,10 +274,8 @@ def analyze_with_llm(message: str) -> dict:
         if not exc.response.text:
             return False
         lowered = exc.response.text.lower()
-        return (
-            "chat_template_kwargs" in lowered
-            and ("unsupported" in lowered or "unknown field" in lowered)
-        ) or ("enable_thinking" in lowered and ("unsupported" in lowered or "unknown" in lowered))
+        unsupported = "unsupported" in lowered or "unknown" in lowered
+        return unsupported and ("chat_template_kwargs" in lowered or "enable_thinking" in lowered)
 
     try:
         decoded = _request(payload)
