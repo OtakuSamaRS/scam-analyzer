@@ -2,10 +2,9 @@ import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import requests
 
 
 def _load_dotenv():
@@ -21,12 +20,8 @@ def _load_dotenv():
 
 _load_dotenv()
 
-LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_API_URL = os.environ.get(
-    "LLM_API_URL",
-    urllib.parse.urljoin(LLM_API_BASE_URL.rstrip("/") + "/", "chat/completions"),
-)
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://integrate.api.nvidia.com/v1")
+LLM_MODEL = os.environ.get("LLM_MODEL", "google/gemma-4-31b-it")
 
 
 _HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")

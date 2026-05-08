@@ -15,9 +15,9 @@ services:
       - key: LLM_API_KEY
         sync: false
       - key: LLM_API_BASE_URL
-        value: https://api.groq.com/openai/v1
+        value: https://api.replicate.com/v1
       - key: LLM_MODEL
-        value: llama-3.3-70b-versatile
+        value: meta/llama-2-7b-chat
     
     # Auto-deploy on push
     autoDeploy: true
