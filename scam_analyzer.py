@@ -258,13 +258,25 @@ def analyze_with_llm(message: str) -> dict:
         "max_tokens": LLM_MAX_TOKENS,
         "temperature": 0.1,
         "top_p": 0.95,
-        "chat_template_kwargs": {"enable_thinking": LLM_ENABLE_THINKING},
     }
+    if LLM_ENABLE_THINKING:
+        payload["chat_template_kwargs"] = {"enable_thinking": True}
 
     def _request(payload_dict: dict) -> dict:
         response = requests.post(api_url, headers=headers, json=payload_dict, timeout=LLM_TIMEOUT)
         response.raise_for_status()
         return response.json()
+
+    def _supports_thinking_error(exc: requests.exceptions.HTTPError) -> bool:
+        if exc.response is None or exc.response.status_code != 400:
+            return False
+        if not exc.response.text:
+            return False
+        lowered = exc.response.text.lower()
+        return (
+            "chat_template_kwargs" in lowered
+            and ("unsupported" in lowered or "unknown field" in lowered)
+        ) or ("enable_thinking" in lowered and ("unsupported" in lowered or "unknown" in lowered))
 
     try:
         decoded = _request(payload)
@@ -272,17 +284,12 @@ def analyze_with_llm(message: str) -> dict:
         raise RuntimeError("API request timed out.")
     except requests.exceptions.HTTPError as exc:
         can_retry_without_thinking = (
-            payload.get("chat_template_kwargs") is not None
-            and exc.response is not None
-            and exc.response.status_code == 400
-            and any(
-                keyword in exc.response.text.lower()
-                for keyword in ("chat_template_kwargs", "enable_thinking", "thinking")
-            )
+            LLM_ENABLE_THINKING
+            and payload.get("chat_template_kwargs") is not None
+            and _supports_thinking_error(exc)
         )
         if can_retry_without_thinking:
-            retry_payload = dict(payload)
-            retry_payload.pop("chat_template_kwargs", None)
+            retry_payload = {key: value for key, value in payload.items() if key != "chat_template_kwargs"}
             decoded = _request(retry_payload)
         else:
             body = ""
