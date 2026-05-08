@@ -21,6 +21,13 @@ _load_dotenv()
 
 LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://integrate.api.nvidia.com/v1")
 LLM_MODEL = os.environ.get("LLM_MODEL", "google/gemma-4-31b-it")
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
+LLM_ENABLE_THINKING = os.environ.get("LLM_ENABLE_THINKING", "true").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
 
 
 _HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
@@ -236,7 +243,6 @@ def analyze_with_llm(message: str) -> dict:
     if not api_key:
         raise RuntimeError("LLM_API_KEY is not set. Add it to the .env file.")
 
-    prompt = f"{ANALYSIS_PROMPT}\n\nUser message:\n{message}"
     api_url = f"{LLM_API_BASE_URL.rstrip('/')}/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -244,11 +250,14 @@ def analyze_with_llm(message: str) -> dict:
     }
     payload = {
         "model": LLM_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 16384,
+        "messages": [
+            {"role": "system", "content": ANALYSIS_PROMPT},
+            {"role": "user", "content": message},
+        ],
+        "max_tokens": LLM_MAX_TOKENS,
         "temperature": 0.1,
         "top_p": 0.95,
-        "chat_template_kwargs": {"enable_thinking": True},
+        "chat_template_kwargs": {"enable_thinking": LLM_ENABLE_THINKING},
     }
     try:
         response = requests.post(api_url, headers=headers, json=payload, timeout=60)
