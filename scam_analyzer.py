@@ -22,6 +22,7 @@ _load_dotenv()
 LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://integrate.api.nvidia.com/v1")
 LLM_MODEL = os.environ.get("LLM_MODEL", "google/gemma-4-31b-it")
 LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "60"))
 LLM_ENABLE_THINKING = os.environ.get("LLM_ENABLE_THINKING", "true").strip().lower() in (
     "1",
     "true",
@@ -259,18 +260,36 @@ def analyze_with_llm(message: str) -> dict:
         "top_p": 0.95,
         "chat_template_kwargs": {"enable_thinking": LLM_ENABLE_THINKING},
     }
-    try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+
+    def _request(payload_dict: dict) -> dict:
+        response = requests.post(api_url, headers=headers, json=payload_dict, timeout=LLM_TIMEOUT)
         response.raise_for_status()
-        decoded = response.json()
+        return response.json()
+
+    try:
+        decoded = _request(payload)
     except requests.exceptions.Timeout:
         raise RuntimeError("API request timed out.")
     except requests.exceptions.HTTPError as exc:
-        body = ""
-        if exc.response is not None and exc.response.text:
-            body = exc.response.text[:300]
-        status_code = exc.response.status_code if exc.response is not None else "unknown"
-        raise RuntimeError(f"API request failed with status {status_code}: {body}")
+        can_retry_without_thinking = (
+            payload.get("chat_template_kwargs") is not None
+            and exc.response is not None
+            and exc.response.status_code == 400
+            and any(
+                keyword in exc.response.text.lower()
+                for keyword in ("chat_template_kwargs", "enable_thinking", "thinking")
+            )
+        )
+        if can_retry_without_thinking:
+            retry_payload = dict(payload)
+            retry_payload.pop("chat_template_kwargs", None)
+            decoded = _request(retry_payload)
+        else:
+            body = ""
+            if exc.response is not None and exc.response.text:
+                body = exc.response.text[:300]
+            status_code = exc.response.status_code if exc.response is not None else "unknown"
+            raise RuntimeError(f"API request failed with status {status_code}: {body}")
     except requests.exceptions.RequestException as exc:
         raise RuntimeError(f"API connection error: {exc}")
 
