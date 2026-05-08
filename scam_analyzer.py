@@ -2,10 +2,8 @@ import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import requests
 
 
 def _load_dotenv():
@@ -21,12 +19,8 @@ def _load_dotenv():
 
 _load_dotenv()
 
-LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_API_URL = os.environ.get(
-    "LLM_API_URL",
-    urllib.parse.urljoin(LLM_API_BASE_URL.rstrip("/") + "/", "chat/completions"),
-)
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://integrate.api.nvidia.com/v1")
+LLM_MODEL = os.environ.get("LLM_MODEL", "google/gemma-4-31b-it")
 
 
 _HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
@@ -242,35 +236,34 @@ def analyze_with_llm(message: str) -> dict:
     if not api_key:
         raise RuntimeError("LLM_API_KEY is not set. Add it to the .env file.")
 
+    prompt = f"{ANALYSIS_PROMPT}\n\nUser message:\n{message}"
+    api_url = f"{LLM_API_BASE_URL.rstrip('/')}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
     payload = {
         "model": LLM_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 16384,
         "temperature": 0.1,
-        "max_tokens": 400,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {"role": "system", "content": ANALYSIS_PROMPT},
-            {"role": "user", "content": message},
-        ],
+        "top_p": 0.95,
+        "chat_template_kwargs": {"enable_thinking": True},
     }
     try:
-        request = urllib.request.Request(
-            LLM_API_URL,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(request, timeout=45) as resp:
-            decoded = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")[:300]
-        raise RuntimeError(f"API request failed with status {exc.code}: {body}")
-    except urllib.error.URLError as exc:
-        if isinstance(exc.reason, TimeoutError):
-            raise RuntimeError("API request timed out.")
-        raise RuntimeError(f"API connection error: {exc.reason}")
+        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+        decoded = response.json()
+    except requests.exceptions.Timeout:
+        raise RuntimeError("API request timed out.")
+    except requests.exceptions.HTTPError as exc:
+        body = ""
+        if exc.response is not None and exc.response.text:
+            body = exc.response.text[:300]
+        status_code = exc.response.status_code if exc.response is not None else "unknown"
+        raise RuntimeError(f"API request failed with status {status_code}: {body}")
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f"API connection error: {exc}")
 
     choices = decoded.get("choices")
     if not isinstance(choices, list) or not choices:
