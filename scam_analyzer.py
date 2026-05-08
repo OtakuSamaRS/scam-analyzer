@@ -274,8 +274,9 @@ def analyze_with_llm(message: str) -> dict:
         if not exc.response.text:
             return False
         lowered = exc.response.text.lower()
-        unsupported = "unsupported" in lowered or "unknown" in lowered
-        return unsupported and ("chat_template_kwargs" in lowered or "enable_thinking" in lowered)
+        unsupported_hint = "unsupported parameter" in lowered or "unknown field" in lowered
+        thinking_hint = "chat_template_kwargs" in lowered or "enable_thinking" in lowered
+        return unsupported_hint and thinking_hint
 
     try:
         decoded = _request(payload)
