@@ -2,10 +2,8 @@ import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import requests
 
 
 def _load_dotenv():
@@ -21,12 +19,16 @@ def _load_dotenv():
 
 _load_dotenv()
 
-LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_API_URL = os.environ.get(
-    "LLM_API_URL",
-    urllib.parse.urljoin(LLM_API_BASE_URL.rstrip("/") + "/", "chat/completions"),
+LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://integrate.api.nvidia.com/v1")
+LLM_MODEL = os.environ.get("LLM_MODEL", "google/gemma-4-31b-it")
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "16384"))
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "60"))
+LLM_ENABLE_THINKING = os.environ.get("LLM_ENABLE_THINKING", "true").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
 )
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
 
 
 _HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
@@ -242,35 +244,61 @@ def analyze_with_llm(message: str) -> dict:
     if not api_key:
         raise RuntimeError("LLM_API_KEY is not set. Add it to the .env file.")
 
+    api_url = f"{LLM_API_BASE_URL.rstrip('/')}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
     payload = {
         "model": LLM_MODEL,
-        "temperature": 0.1,
-        "max_tokens": 400,
-        "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": ANALYSIS_PROMPT},
             {"role": "user", "content": message},
         ],
+        "max_tokens": LLM_MAX_TOKENS,
+        "temperature": 0.1,
+        "top_p": 0.95,
+        "response_format": {"type": "json_object"},
     }
+    if LLM_ENABLE_THINKING:
+        payload["chat_template_kwargs"] = {"enable_thinking": True}
+
+    def _request(payload_dict: dict) -> dict:
+        response = requests.post(api_url, headers=headers, json=payload_dict, timeout=LLM_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+
+    def _is_unsupported_thinking_error(exc: requests.exceptions.HTTPError) -> bool:
+        if exc.response is None or exc.response.status_code != 400:
+            return False
+        if not exc.response.text:
+            return False
+        lowered = exc.response.text.lower()
+        unsupported_hint = "unsupported parameter" in lowered or "unknown field" in lowered
+        thinking_hint = "chat_template_kwargs" in lowered or "enable_thinking" in lowered
+        return unsupported_hint and thinking_hint
+
     try:
-        request = urllib.request.Request(
-            LLM_API_URL,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            method="POST",
+        decoded = _request(payload)
+    except requests.exceptions.Timeout:
+        raise RuntimeError("API request timed out.")
+    except requests.exceptions.HTTPError as exc:
+        can_retry_without_thinking = (
+            LLM_ENABLE_THINKING
+            and payload.get("chat_template_kwargs") is not None
+            and _is_unsupported_thinking_error(exc)
         )
-        with urllib.request.urlopen(request, timeout=45) as resp:
-            decoded = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")[:300]
-        raise RuntimeError(f"API request failed with status {exc.code}: {body}")
-    except urllib.error.URLError as exc:
-        if isinstance(exc.reason, TimeoutError):
-            raise RuntimeError("API request timed out.")
-        raise RuntimeError(f"API connection error: {exc.reason}")
+        if can_retry_without_thinking:
+            retry_payload = {key: value for key, value in payload.items() if key != "chat_template_kwargs"}
+            decoded = _request(retry_payload)
+        else:
+            body = ""
+            if exc.response is not None and exc.response.text:
+                body = exc.response.text[:300]
+            status_code = exc.response.status_code if exc.response is not None else "unknown"
+            raise RuntimeError(f"API request failed with status {status_code}: {body}")
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f"API connection error: {exc}")
 
     choices = decoded.get("choices")
     if not isinstance(choices, list) or not choices:
