@@ -268,7 +268,7 @@ def analyze_with_llm(message: str) -> dict:
         response.raise_for_status()
         return response.json()
 
-    def _supports_thinking_error(exc: requests.exceptions.HTTPError) -> bool:
+    def _is_unsupported_thinking_error(exc: requests.exceptions.HTTPError) -> bool:
         if exc.response is None or exc.response.status_code != 400:
             return False
         if not exc.response.text:
@@ -286,7 +286,7 @@ def analyze_with_llm(message: str) -> dict:
         can_retry_without_thinking = (
             LLM_ENABLE_THINKING
             and payload.get("chat_template_kwargs") is not None
-            and _supports_thinking_error(exc)
+            and _is_unsupported_thinking_error(exc)
         )
         if can_retry_without_thinking:
             retry_payload = {key: value for key, value in payload.items() if key != "chat_template_kwargs"}

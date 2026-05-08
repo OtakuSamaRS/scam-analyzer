@@ -28,7 +28,7 @@ class _UnsupportedThinkingResponse:
     text = '{"error":"unsupported parameter: chat_template_kwargs"}'
 
 
-class _UnsupportedThinkingError(requests.exceptions.HTTPError):
+class _MockUnsupportedThinkingHttpError(requests.exceptions.HTTPError):
     def __init__(self):
         super().__init__("bad request")
         self.response = _UnsupportedThinkingResponse()
@@ -44,7 +44,7 @@ class AnalyzeWithLlmTests(unittest.TestCase):
         def _post(*args, **kwargs):
             calls.append(kwargs["json"])
             if kwargs["json"].get("chat_template_kwargs"):
-                raise _UnsupportedThinkingError()
+                raise _MockUnsupportedThinkingHttpError()
             return _OkResponse()
 
         with patch("scam_analyzer.requests.post", side_effect=_post):
