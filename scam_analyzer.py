@@ -21,7 +21,7 @@ def _load_dotenv():
 
 _load_dotenv()
 
-LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://api.groq.com/openai/v1")
+LLM_API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://opencode.ai/zen/v1")
 LLM_API_URL = os.environ.get(
     "LLM_API_URL",
     urllib.parse.urljoin(LLM_API_BASE_URL.rstrip("/") + "/", "chat/completions"),
@@ -242,16 +242,26 @@ def analyze_with_llm(message: str) -> dict:
     if not api_key:
         raise RuntimeError("LLM_API_KEY is not set. Add it to the .env file.")
 
-    payload = {
-        "model": LLM_MODEL,
-        "temperature": 0.1,
-        "max_tokens": 400,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {"role": "system", "content": ANALYSIS_PROMPT},
-            {"role": "user", "content": message},
-        ],
-    }
+    # o1 doesn't support temperature, system messages, or response_format
+    is_o1 = LLM_MODEL.startswith("o1") or LLM_MODEL == "zen"
+    if is_o1:
+        payload = {
+            "model": LLM_MODEL,
+            "messages": [
+                {"role": "user", "content": f"{ANALYSIS_PROMPT}\n\nMessage to analyze: {message}"},
+            ],
+        }
+    else:
+        payload = {
+            "model": LLM_MODEL,
+            "temperature": 0.1,
+            "max_tokens": 400,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": ANALYSIS_PROMPT},
+                {"role": "user", "content": message},
+            ],
+        }
     try:
         request = urllib.request.Request(
             LLM_API_URL,
